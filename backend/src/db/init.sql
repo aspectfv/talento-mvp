@@ -25,22 +25,22 @@ CREATE TABLE users (
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL, -- hashed password for dashboard login
 
-    -- Profile Information (primarily for job seekers)
+    -- profile Information (primarily for job seekers)
     first_name VARCHAR(100),
     last_name VARCHAR(100),
     university VARCHAR(255),
     skills TEXT[], -- Using a native PostgreSQL array for efficient querying
     interests TEXT[],
 
-    -- System & Role Information
+    -- system & role Information
     role VARCHAR(50) NOT NULL CHECK (role IN ('seeker', 'admin', 'superadmin')),
     messenger_psid VARCHAR(255) UNIQUE, -- Page-Scoped ID from Facebook Messenger. Unique and nullable.
     resume_url VARCHAR(255), -- URL to resume file in cloud storage
 
-    -- Association for Admins
+    -- association for admins
     company_id BIGINT REFERENCES companies(company_id) ON DELETE SET NULL, -- A recruiter belongs to a company.
 
-    -- Timestamps
+    -- timestamps
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -57,9 +57,9 @@ CREATE TABLE jobs (
     location VARCHAR(255),
     employment_type VARCHAR(100) CHECK (employment_type IN ('full-time', 'part-time', 'contract', 'internship')),
 
-    is_active BOOLEAN NOT NULL DEFAULT TRUE, -- To deactivate jobs without deleting them
+    is_active BOOLEAN NOT NULL DEFAULT TRUE, -- to deactivate jobs without deleting them
 
-    -- Timestamps
+    -- timestamps
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -74,11 +74,11 @@ CREATE TABLE applications (
 
     status VARCHAR(50) NOT NULL DEFAULT 'applied' CHECK (status IN ('applied', 'shortlisted', 'rejected')),
 
-    -- Timestamps
-    applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), -- Specific name for when the application was submitted
+    -- timestamps
+    applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), -- specific name for when the application was submitted
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-    -- A user can only apply to the same job once.
+    -- a user can only apply to the same job once.
     UNIQUE (job_id, user_id)
 );
 
@@ -92,14 +92,15 @@ CREATE TABLE recruiter_actions (
 
     action_type VARCHAR(50) NOT NULL CHECK (action_type IN ('shortlist', 'reject')),
 
-    -- Timestamps
+    -- timestamps
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 
--- indexes for Performance
--- description: Creating indexes on foreign keys and frequently queried columns
+-- indexes for performance
+-- description: creating indexes on foreign keys and frequently queried columns
 -- to speed up database lookups.
+
 -- users table indexes
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_role ON users(role);
