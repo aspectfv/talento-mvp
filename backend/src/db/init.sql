@@ -1,15 +1,4 @@
--- =================================================================================
--- Talento MVP Database Initialization Script
---
--- Description: This script creates the necessary tables, indexes, and constraints
--- for the Talento application backend. It is designed for PostgreSQL.
---
--- Usage: Run this script once on a fresh database to set up the schema.
---        The 'DROP TABLE IF EXISTS' statements allow for easy re-running during
---        development.
--- =================================================================================
-
--- Drop tables in reverse order of dependency to avoid foreign key constraint errors.
+-- drop existing tables if they exist to start fresh
 DROP TABLE IF EXISTS recruiter_actions;
 DROP TABLE IF EXISTS applications;
 DROP TABLE IF EXISTS jobs;
@@ -17,10 +6,8 @@ DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS companies;
 
 
--- =================================================================================
--- Table: companies
--- Description: Stores information about the companies posting jobs.
--- =================================================================================
+-- table: companies
+-- description: stores information about the companies posting jobs.
 CREATE TABLE companies (
     company_id BIGSERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -31,14 +18,12 @@ CREATE TABLE companies (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- =================================================================================
--- Table: users
--- Description: Stores information for all user types: job seekers, recruiters, and superadmins.
--- =================================================================================
+-- table: users
+-- description: stores information for all user types: job seekers, recruiters, and superadmins.
 CREATE TABLE users (
     user_id BIGSERIAL PRIMARY KEY,
     email VARCHAR(255) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL, -- Hashed password for dashboard login
+    password_hash VARCHAR(255) NOT NULL, -- hashed password for dashboard login
 
     -- Profile Information (primarily for job seekers)
     first_name VARCHAR(100),
@@ -60,10 +45,8 @@ CREATE TABLE users (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- =================================================================================
--- Table: jobs
--- Description: Stores job postings created by recruiters.
--- =================================================================================
+-- table: jobs
+-- description: stores job postings created by recruiters.
 CREATE TABLE jobs (
     job_id BIGSERIAL PRIMARY KEY,
     company_id BIGINT NOT NULL REFERENCES companies(company_id) ON DELETE RESTRICT,
@@ -81,11 +64,9 @@ CREATE TABLE jobs (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- =================================================================================
--- Table: applications
--- Description: A join table representing a job seeker's application to a specific job.
--- It also tracks the current status of that application.
--- =================================================================================
+-- table: applications
+-- description: a join table representing a job seeker's application to a specific job.
+-- it also tracks the current status of that application.
 CREATE TABLE applications (
     application_id BIGSERIAL PRIMARY KEY,
     job_id BIGINT NOT NULL REFERENCES jobs(job_id) ON DELETE RESTRICT,
@@ -101,11 +82,9 @@ CREATE TABLE applications (
     UNIQUE (job_id, user_id)
 );
 
--- =================================================================================
--- Table: recruiter_actions
--- Description: An audit log of actions performed by recruiters on applications.
--- This provides a history of who did what and when, separate from the application's current state.
--- =================================================================================
+-- table: recruiter_actions
+-- description: an audit log of actions performed by recruiters on applications.
+-- this provides a history of who did what and when, separate from the application's current state.
 CREATE TABLE recruiter_actions (
     action_id BIGSERIAL PRIMARY KEY,
     application_id BIGINT NOT NULL REFERENCES applications(application_id) ON DELETE CASCADE,
@@ -118,28 +97,25 @@ CREATE TABLE recruiter_actions (
 );
 
 
--- =================================================================================
--- Indexes for Performance
--- Description: Creating indexes on foreign keys and frequently queried columns
+-- indexes for Performance
+-- description: Creating indexes on foreign keys and frequently queried columns
 -- to speed up database lookups.
--- =================================================================================
-
--- Users Table Indexes
+-- users table indexes
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_role ON users(role);
 CREATE INDEX idx_users_company_id ON users(company_id);
 CREATE INDEX idx_users_messenger_psid ON users(messenger_psid);
 
--- Jobs Table Indexes
+-- jobs table indexes
 CREATE INDEX idx_jobs_company_id ON jobs(company_id);
 CREATE INDEX idx_jobs_is_active ON jobs(is_active);
 CREATE INDEX idx_jobs_created_by ON jobs(created_by_user_id);
 
--- Applications Table Indexes
+-- applications table indexes
 CREATE INDEX idx_applications_job_id ON applications(job_id);
 CREATE INDEX idx_applications_user_id ON applications(user_id);
 CREATE INDEX idx_applications_status ON applications(status);
 
--- Recruiter Actions Table Indexes
+-- recruiter Actions table indexes
 CREATE INDEX idx_recruiter_actions_application_id ON recruiter_actions(application_id);
 CREATE INDEX idx_recruiter_actions_recruiter_id ON recruiter_actions(recruiter_user_id);
