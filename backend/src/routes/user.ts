@@ -6,13 +6,15 @@ import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// GET /users - get all users
-router.get('/', authenticateToken, userController.getAllUsers);
 // POST /users - create a new user
 router.post('/', validate(userValidator.createUserSchema), userController.createUser);
 
+// GET /users - get all users
+router.get('/', authenticateToken, userController.getAllUsers);
+
 // GET /users/me - get current user
 router.get('/me', authenticateToken, userController.getCurrentUser);
+
 // PUT /users/me - update current user
 router.put('/me', authenticateToken, validate(userValidator.updateCurrentUserSchema), userController.updateCurrentUser);
 
