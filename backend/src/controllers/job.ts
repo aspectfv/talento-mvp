@@ -30,7 +30,6 @@ export const createJob = async (req: AuthRequest, res: Response) => {
 
 export const getAllJobs = async (req: AuthRequest, res: Response) => {
   const user = req.user;
-
   let query = supabase.from('jobs').select('*');
 
   if (!user || user.role === 'seeker') {
@@ -51,7 +50,6 @@ export const getAllJobs = async (req: AuthRequest, res: Response) => {
 
   res.json(data);
 };
-
 export const getJobById = async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const { user } = req;
@@ -138,10 +136,44 @@ export const deleteJob = async (req: AuthRequest, res: Response) => {
   res.status(204).send();
 };
 
+export const getApplicationsForJob = async (req: AuthRequest, res: Response) => {
+  const { job_id } = req.params;
+  const { status } = req.query;
+  const { user } = req;
+
+  // first, verify the job exists and the user has permission to see it/its applications
+  const { data: job, error: findError } = await supabase
+    .from('jobs')
+    .select('company_id')
+    .eq('id', job_id)
+    .single();
+
+  if (findError || !job) {
+    return res.status(404).json({ error: 'Job not found' });
+  }
+
+  if (user!.role === 'admin' && user!.companyId != job.company_id) {
+    return res.status(403).json({ error: 'Insufficient permissions' });
+  }
+
+  let query = supabase.from('applications').select('*').eq('job_id', job_id);
+
+  if (status) {
+    query = query.eq('status', status as string);
+  }
+
+  const { data: applications, error } = await query;
+
+  if (error) throw error;
+
+  res.json(applications);
+};
+
 export default {
   createJob,
   getAllJobs,
   getJobById,
   updateJob,
   deleteJob,
+  getApplicationsForJob,
 };

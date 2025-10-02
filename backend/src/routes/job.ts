@@ -31,6 +31,15 @@ router.get(
   jobController.getJobById
 );
 
+// GET /jobs/:job_id/applications - get all applications for a specific job
+router.get(
+  '/:job_id/applications',
+  authenticateToken,
+  authorizeRole(['admin', 'superadmin']),
+  validate(jobValidator.getApplicationsForJobSchema),
+  jobController.getApplicationsForJob
+);
+
 // PUT /jobs/:id - update a job
 router.put(
   '/:id',

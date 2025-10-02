@@ -54,10 +54,22 @@ export const deleteJobSchema = z.object({
   }),
 });
 
+export const getApplicationsForJobSchema = z.object({
+  params: z.object({
+    job_id: z.string().refine(val => /^\d+$/.test(val), {
+      message: 'Job ID must be a positive integer.',
+    }),
+  }),
+  query: z.object({
+    status: z.enum(['applied', 'shortlisted', 'rejected']).optional(),
+  }),
+});
+
 export default {
   createJobSchema,
   getAllJobsSchema,
   getJobByIdSchema,
   updateJobSchema,
   deleteJobSchema,
+  getApplicationsForJobSchema,
 };
