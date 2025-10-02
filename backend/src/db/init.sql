@@ -34,11 +34,11 @@ CREATE TABLE users (
 
     -- system & role Information
     role VARCHAR(50) NOT NULL CHECK (role IN ('seeker', 'admin', 'superadmin')),
-    messenger_psid VARCHAR(255) UNIQUE, -- Page-Scoped ID from Facebook Messenger. Unique and nullable.
-    resume_url VARCHAR(255), -- URL to resume file in cloud storage
+    messenger_psid VARCHAR(255) UNIQUE, -- page-scoped id from messenger
+    resume_url VARCHAR(255), -- url to resume file in cloud storage
 
     -- association for admins
-    company_id BIGINT REFERENCES companies(company_id) ON DELETE SET NULL, -- A recruiter belongs to a company.
+    company_id BIGINT REFERENCES companies(company_id) ON DELETE SET NULL, -- recruiter belongs to a company
 
     -- timestamps
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -84,7 +84,7 @@ CREATE TABLE applications (
 
 -- table: recruiter_actions
 -- description: an audit log of actions performed by recruiters on applications.
--- this provides a history of who did what and when, separate from the application's current state.
+-- provides a history of who did what and when, separate from the application's current state.
 CREATE TABLE recruiter_actions (
     action_id BIGSERIAL PRIMARY KEY,
     application_id BIGINT NOT NULL REFERENCES applications(application_id) ON DELETE CASCADE,
