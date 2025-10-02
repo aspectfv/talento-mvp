@@ -15,7 +15,7 @@ describe('Auth Routes - POST /auth/login', () => {
   it('should return a token for valid credentials', async () => {
     // 1. mock expected database response
     const mockUser = {
-      user_id: 1,
+      id: 1,
       email: 'john.doe@example.com',
       password_hash: 'hashedpassword',
       role: 'seeker',
@@ -39,7 +39,7 @@ describe('Auth Routes - POST /auth/login', () => {
   });
 
   it('should return 401 for invalid credentials (wrong password)', async () => {
-    const mockUser = { user_id: 1, email: 'john.doe@example.com', password_hash: 'hashedpassword' };
+    const mockUser = { id: 1, email: 'john.doe@example.com', password_hash: 'hashedpassword' };
     (supabase.from('users').select().eq('email', 'john.doe@example.com').single as jest.Mock).mockResolvedValue({ data: mockUser, error: null });
 
     // mock bcrypt to return false, simulating password mismatch

@@ -6,7 +6,7 @@ import { AuthRequest } from '../middleware/auth.js';
 export const getAllUsers = async (_: AuthRequest, res: Response) => {
   const { data, error } = await supabase
     .from('users')
-    .select('user_id, email, role, company_id, first_name, last_name');
+    .select('id, email, role, company_id, first_name, last_name');
 
   if (error) throw error;
 
@@ -37,7 +37,7 @@ export const createUser = async (req: AuthRequest, res: Response) => {
       first_name,
       last_name,
     })
-    .select('user_id, email, role, created_at')
+    .select('id, email, role, created_at')
     .single();
 
   if (error) {
@@ -61,8 +61,8 @@ export const updateCurrentUser = async (req: AuthRequest, res: Response) => {
   const { data, error } = await supabase
     .from('users')
     .update({ first_name, last_name, university, skills, interests, updated_at: new Date() })
-    .eq('user_id', id)
-    .select('user_id, email, role, company_id, first_name, last_name, university, skills, interests')
+    .eq('id', id)
+    .select('id, email, role, company_id, first_name, last_name, university, skills, interests')
     .single();
 
   if (error) throw error;
@@ -75,8 +75,8 @@ export const getUserById = async (req: AuthRequest, res: Response) => {
 
   const { data: user, error } = await supabase
     .from('users')
-    .select('user_id, email, role, company_id, first_name, last_name, university, skills, interests')
-    .eq('user_id', id)
+    .select('id, email, role, company_id, first_name, last_name, university, skills, interests')
+    .eq('id', id)
     .single();
 
   if (error) throw error;
@@ -95,8 +95,8 @@ export const updateUserById = async (req: AuthRequest, res: Response) => {
   const { data: user, error } = await supabase
     .from('users')
     .update({ first_name, last_name, university, skills, interests, updated_at: new Date() })
-    .eq('user_id', id)
-    .select('user_id, email, role, company_id, first_name, last_name, university, skills, interests')
+    .eq('id', id)
+    .select('id, email, role, company_id, first_name, last_name, university, skills, interests')
     .single();
 
   if (error) throw error;

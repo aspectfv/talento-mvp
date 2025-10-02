@@ -8,7 +8,7 @@ export const login = async (req: Request, res: Response) => {
 
   const { data: user, error } = await supabase
     .from('users')
-    .select('user_id, email, password_hash, role, company_id')
+    .select('id, email, password_hash, role, company_id')
     .eq('email', email)
     .single();
 
@@ -27,7 +27,7 @@ export const login = async (req: Request, res: Response) => {
 
   const token = jwt.sign(
     {
-      userId: user.user_id,
+      userId: user.id,
       role: user.role,
     },
     process.env.JWT_SECRET!,
@@ -37,7 +37,7 @@ export const login = async (req: Request, res: Response) => {
   res.json({
     token,
     user: {
-      id: user.user_id,
+      id: user.id,
       email: user.email,
       role: user.role,
       companyId: user.company_id

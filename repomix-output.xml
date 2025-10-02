@@ -1,0 +1,1128 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+backend/
+  src/
+    controllers/
+      auth.ts
+      user.ts
+    db/
+      init.sql
+      seed.sql
+      supabase.ts
+    middleware/
+      auth.ts
+      validation.ts
+    routes/
+      auth.ts
+      index.ts
+      user.ts
+    tests/
+      auth.test.ts
+      setup.ts
+      user.test.ts
+    validation/
+      auth.ts
+      user.ts
+    app.ts
+  .env.example
+  .gitignore
+  jest.config.js
+  package.json
+  tsconfig.json
+README.md
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="backend/src/db/seed.sql">
+-- Enable the pgcrypto extension for password hashing
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- Seed data for the 'companies' table
+INSERT INTO companies (name, website, description, logo_url) VALUES
+('Innovate Inc.', 'https://innovateinc.com', 'A leading tech company specializing in AI.', 'https://innovateinc.com/logo.png'),
+('Quantum Solutions', 'https://quantumsolutions.com', 'Pioneers in quantum computing.', 'https://quantumsolutions.com/logo.png'),
+('BioHealth Corp.', 'https://biohealthcorp.com', 'Dedicated to advancing biotechnology.', 'https://biohealthcorp.com/logo.png');
+
+-- Seed data for the 'users' table
+-- All passwords are 'password123', hashed using pgcrypto's crypt() function with bcrypt.
+INSERT INTO users (email, password_hash, role, first_name, last_name, university, skills, interests, company_id, messenger_psid) VALUES
+-- Job Seekers
+('john.doe@example.com', crypt('password123', gen_salt('bf')), 'seeker', 'John', 'Doe', 'State University', ARRAY['JavaScript', 'React', 'Node.js'], ARRAY['Web Development', 'AI', 'Hiking'], NULL, 'messenger_psid_1'),
+('jane.smith@example.com', crypt('password123', gen_salt('bf')), 'seeker', 'Jane', 'Smith', 'Tech Institute', ARRAY['Python', 'Data Science', 'Machine Learning'], ARRAY['Data Analysis', 'Reading', 'Photography'], NULL, 'messenger_psid_2'),
+
+-- Admins (Recruiters)
+('recruiter.innovate@example.com', crypt('password123', gen_salt('bf')), 'admin', 'Recruiter', 'One', NULL, NULL, NULL, 1, NULL),
+('recruiter.quantum@example.com', crypt('password123', gen_salt('bf')), 'admin', 'Recruiter', 'Two', NULL, NULL, NULL, 2, NULL),
+
+-- Superadmin
+('superadmin@talento.com', crypt('password123', gen_salt('bf')), 'superadmin', 'Super', 'Admin', NULL, NULL, NULL, NULL, NULL);
+
+-- Seed data for the 'jobs' table
+INSERT INTO jobs (company_id, created_by_user_id, title, description, location, employment_type) VALUES
+(1, 3, 'Frontend Developer', 'Developing and maintaining user-facing features.', 'Remote', 'full-time'),
+(1, 3, 'Backend Developer', 'Building and maintaining the server-side logic.', 'New York, NY', 'full-time'),
+(2, 4, 'Quantum Researcher', 'Conducting research in quantum algorithms.', 'Palo Alto, CA', 'full-time');
+
+-- Seed data for the 'applications' table
+INSERT INTO applications (job_id, user_id, status) VALUES
+(1, 1, 'applied'),
+(2, 1, 'shortlisted'),
+(3, 2, 'applied');
+
+-- Seed data for the 'recruiter_actions' table
+INSERT INTO recruiter_actions (application_id, recruiter_user_id, action_type) VALUES
+(2, 3, 'shortlist');
+</file>
+
+<file path="backend/src/middleware/auth.ts">
+import { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
+import { supabase } from '../db/supabase.js';
+
+export interface AuthRequest extends Request {
+  user?: {
+    id: string;
+    email: string;
+    role: string;
+    companyId?: string;
+  };
+}
+
+export const authenticateToken = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ error: 'Access token required' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('user_id, email, role, company_id')
+      .eq('user_id', decoded.userId)
+      .single();
+
+    if (error || !user) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    req.user = {
+      id: user.user_id,
+      email: user.email,
+      role: user.role,
+      companyId: user.company_id
+    };
+
+    next();
+  } catch (error) {
+    return res.status(403).json({ error: 'Invalid token' });
+  }
+};
+
+export const authorizeRole = (roles: string[]) => {
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!req.user || !roles.includes(req.user.role)) {
+      return res.status(403).json({ error: 'Insufficient permissions' });
+    }
+    next();
+  };
+};
+</file>
+
+<file path="backend/src/tests/auth.test.ts">
+import request from 'supertest';
+import express from 'express';
+import bcrypt from 'bcrypt';
+import { supabase } from '../db/supabase.js';
+import authRoutes from '../routes/auth.js'; // The router we want to test
+
+const app = express();
+app.use(express.json());
+app.use('/auth', authRoutes);
+
+process.env.JWT_SECRET = 'test-secret';
+
+describe('Auth Routes - POST /auth/login', () => {
+
+  it('should return a token for valid credentials', async () => {
+    // 1. mock expected database response
+    const mockUser = {
+      user_id: 1,
+      email: 'john.doe@example.com',
+      password_hash: 'hashedpassword',
+      role: 'seeker',
+      company_id: null,
+    };
+
+    // pass the expected arguments to .eq()
+    (supabase.from('users').select().eq('email', 'john.doe@example.com').single as jest.Mock).mockResolvedValue({ data: mockUser, error: null });
+
+    // 2. mock bcrypt.compare function to return true
+    (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+    // 3. make request and assert response
+    const response = await request(app)
+      .post('/auth/login')
+      .send({ email: 'john.doe@example.com', password: 'password123' });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('token');
+    expect(response.body.user.email).toBe('john.doe@example.com');
+  });
+
+  it('should return 401 for invalid credentials (wrong password)', async () => {
+    const mockUser = { user_id: 1, email: 'john.doe@example.com', password_hash: 'hashedpassword' };
+    (supabase.from('users').select().eq('email', 'john.doe@example.com').single as jest.Mock).mockResolvedValue({ data: mockUser, error: null });
+
+    // mock bcrypt to return false, simulating password mismatch
+    (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+
+    const response = await request(app)
+      .post('/auth/login')
+      .send({ email: 'john.doe@example.com', password: 'wrongpassword' });
+
+    expect(response.status).toBe(401);
+    expect(response.body.error).toBe('Invalid credentials');
+  });
+
+  it('should return 401 if user does not exist', async () => {
+    // mock supabase to return no user
+    (supabase.from('users').select().eq('email', 'nouser@example.com').single as jest.Mock).mockResolvedValue({ data: null, error: null });
+    const response = await request(app)
+      .post('/auth/login')
+      .send({ email: 'nouser@example.com', password: 'password123' });
+
+    expect(response.status).toBe(401);
+    expect(response.body.error).toBe('Invalid credentials');
+  });
+
+  it('should return 400 for invalid email format (Zod validation)', async () => {
+    const response = await request(app)
+      .post('/auth/login')
+      .send({ email: 'not-an-email', password: 'password123' });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe('Validation failed');
+  });
+
+  it('should return 400 if password is missing (Zod validation)', async () => {
+    const response = await request(app)
+      .post('/auth/login')
+      .send({ email: 'john.doe@example.com' });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe('Validation failed');
+  });
+});
+</file>
+
+<file path="backend/src/tests/setup.ts">
+jest.mock('../db/supabase', () => ({
+  supabase: {
+    from: jest.fn().mockReturnThis(),
+    select: jest.fn().mockReturnThis(),
+    insert: jest.fn().mockReturnThis(),
+    update: jest.fn().mockReturnThis(),
+    eq: jest.fn().mockReturnThis(),
+    single: jest.fn(),
+  },
+}));
+
+jest.mock('bcrypt', () => ({
+  compare: jest.fn(),
+  genSalt: jest.fn(),
+  hash: jest.fn(),
+}));
+</file>
+
+<file path="backend/src/tests/user.test.ts">
+import request from 'supertest';
+import express, { Request, Response, NextFunction } from 'express';
+import { supabase } from '../db/supabase.js';
+import { AuthRequest } from '../middleware/auth.js';
+import userRoutes from '../routes/user.js';
+
+// mock auth middleware to bypass actual authentication for testing
+jest.mock('../middleware/auth', () => ({
+  authenticateToken: (req: AuthRequest, _: Response, next: NextFunction) => {
+    // mock user info to simulate authenticated user
+    req.user = {
+      id: '1',
+      email: 'john.doe@example.com',
+      role: 'seeker'
+    };
+    next();
+  },
+  authorizeRole: (_: string[]) => (_: Request, __: Response, next: NextFunction) => {
+    // assume user has the required role for testing purposes
+    next();
+  },
+}));
+
+const app = express();
+app.use(express.json());
+app.use('/users', userRoutes);
+
+describe('User Routes', () => {
+
+  describe('GET /users/me', () => {
+    it('should return the current user based on the mock auth token', async () => {
+      const response = await request(app).get('/users/me');
+
+      expect(response.status).toBe(200);
+      expect(response.body.user).toBeDefined();
+      expect(response.body.user.id).toBe('1');
+      expect(response.body.user.email).toBe('john.doe@example.com');
+    });
+  });
+
+  describe('PUT /users/me', () => {
+    it('should update the current user and return the updated data', async () => {
+      const updateData = { first_name: 'Johnathan' };
+      const updatedUser = { user_id: 1, email: 'john.doe@example.com', first_name: 'Johnathan' };
+
+      // Mock the Supabase update call
+      (supabase.from('users').update(updateData).eq('id', '1').select().single as jest.Mock)
+        .mockResolvedValue({ data: updatedUser, error: null });
+
+      const response = await request(app)
+        .put('/users/me')
+        .send(updateData);
+
+      expect(response.status).toBe(200);
+      expect(response.body.first_name).toBe('Johnathan');
+    });
+
+    it('should return 400 if the update body is empty', async () => {
+      const response = await request(app)
+        .put('/users/me')
+        .send({}); // Empty body
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('Validation failed');
+    });
+  });
+
+  describe('GET /users/:id', () => {
+    it('should get a user by their ID', async () => {
+      const mockUser = { user_id: 2, email: 'jane.smith@example.com' };
+
+      (supabase.from('users').select().eq('id', '2').single as jest.Mock)
+        .mockResolvedValue({ data: mockUser, error: null });
+
+      const response = await request(app).get('/users/2');
+
+      expect(response.status).toBe(200);
+      expect(response.body.email).toBe('jane.smith@example.com');
+    });
+
+    it('should return 400 for a non-integer ID', async () => {
+      const response = await request(app).get('/users/abc');
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('Validation failed');
+    });
+  });
+});
+</file>
+
+<file path="backend/.gitignore">
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Diagnostic reports (https://nodejs.org/api/report.html)
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Directory for instrumented libs generated by jscoverage/JSCover
+lib-cov
+
+# Coverage directory used by tools like istanbul
+coverage
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Grunt intermediate storage (https://gruntjs.com/creating-plugins#storing-task-files)
+.grunt
+
+# Bower dependency directory (https://bower.io/)
+bower_components
+
+# node-waf configuration
+.lock-wscript
+
+# Compiled binary addons (https://nodejs.org/api/addons.html)
+build/Release
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Snowpack dependency directory (https://snowpack.dev/)
+web_modules/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional stylelint cache
+.stylelintcache
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variable files
+.env
+.env.*
+!.env.example
+
+# parcel-bundler cache (https://parceljs.org/)
+.cache
+.parcel-cache
+
+# Next.js build output
+.next
+out
+
+# Nuxt.js build / generate output
+.nuxt
+dist
+
+# Gatsby files
+.cache/
+# Comment in the public line in if your project uses Gatsby and not Next.js
+# https://nextjs.org/blog/next-9-1#public-directory-support
+# public
+
+# vuepress build output
+.vuepress/dist
+
+# vuepress v2.x temp and cache directory
+.temp
+.cache
+
+# Sveltekit cache directory
+.svelte-kit/
+
+# vitepress build output
+**/.vitepress/dist
+
+# vitepress cache directory
+**/.vitepress/cache
+
+# Docusaurus cache and generated files
+.docusaurus
+
+# Serverless directories
+.serverless/
+
+# FuseBox cache
+.fusebox/
+
+# DynamoDB Local files
+.dynamodb/
+
+# Firebase cache directory
+.firebase/
+
+# TernJS port file
+.tern-port
+
+# Stores VSCode versions used for testing VSCode extensions
+.vscode-test
+
+# yarn v3
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# Vite logs files
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+</file>
+
+<file path="backend/jest.config.js">
+export default {
+  preset: 'ts-jest',
+  testEnvironment: 'node',
+  clearMocks: true,
+  coverageDirectory: 'coverage',
+  setupFilesAfterEnv: ['<rootDir>/src/tests/setup.ts'],
+  // handle es module imports in tests without adding .js extension
+  moduleNameMapper: {
+    '^(\\.{1,2}/.*)\\.js$': '$1',
+  }
+}
+</file>
+
+<file path="README.md">
+# talento-mvp
+</file>
+
+<file path="backend/src/db/supabase.ts">
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.SUPABASE_URL as string;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY as string;
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+</file>
+
+<file path="backend/src/middleware/validation.ts">
+import { Request, Response, NextFunction } from 'express';
+import { z, ZodObject, ZodError } from 'zod';
+
+export const validate =
+  (schema: ZodObject) =>
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        await schema.parseAsync({
+          body: req.body,
+          query: req.query,
+          params: req.params,
+        });
+        return next();
+      } catch (error) {
+        if (error instanceof ZodError) {
+          return res.status(400).json({
+            error: 'Validation failed',
+            details: z.prettifyError(error),
+          });
+        }
+        return next(error);
+      }
+    };
+</file>
+
+<file path="backend/src/validation/auth.ts">
+import { z } from 'zod';
+
+export const loginSchema = z.object({
+  body: z.object({
+    email: z.email('Invalid email address'),
+    password: z.string().min(1, 'Password is required'),
+  }),
+});
+
+export default {
+  loginSchema,
+};
+</file>
+
+<file path="backend/src/validation/user.ts">
+import { z } from 'zod';
+
+const userRoles = ['seeker', 'admin', 'superadmin'] as const;
+
+export const createUserSchema = z.object({
+  body: z
+    .object({
+      email: z.email().optional(),
+      password: z.string().min(6, 'Password must be at least 6 characters long').optional(),
+      role: z.enum(userRoles).optional(),
+      company_id: z.number().int().positive().optional(),
+      messenger_psid: z.string().min(1).optional(),
+      first_name: z.string().min(1).optional(),
+      last_name: z.string().min(1).optional(),
+    })
+    .refine(data => (data.email && data.password && data.role) || data.messenger_psid, {
+      message: 'Either email, password, and role are required, or a messenger_psid is required.',
+      path: ['body'],
+    }),
+});
+
+const commonUpdateBody = z
+  .object({
+    first_name: z.string().min(1, 'First name cannot be empty').optional(),
+    last_name: z.string().min(1, 'Last name cannot be empty').optional(),
+    university: z.string().optional(),
+    skills: z.array(z.string()).optional(),
+    interests: z.array(z.string()).optional(),
+  })
+  .refine(data => Object.keys(data).length > 0, {
+    message: 'Update body cannot be empty',
+  });
+
+export const updateCurrentUserSchema = z.object({
+  body: commonUpdateBody,
+});
+
+export const getUserByIdSchema = z.object({
+  params: z.object({
+    id: z.string().refine(val => /^\d+$/.test(val), {
+      message: 'ID must be a positive integer.',
+    }),
+  }),
+});
+
+export const updateUserByIdSchema = z.object({
+  body: commonUpdateBody,
+  params: z.object({
+    id: z.string().refine(val => /^\d+$/.test(val), {
+      message: 'ID must be a positive integer.',
+    }),
+  }),
+});
+
+export default {
+  createUserSchema,
+  updateCurrentUserSchema,
+  getUserByIdSchema,
+  updateUserByIdSchema,
+};
+</file>
+
+<file path="backend/src/controllers/auth.ts">
+import { Request, Response } from 'express';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import { supabase } from '../db/supabase.js';
+
+export const login = async (req: Request, res: Response) => {
+  const { email, password } = req.body;
+
+  const { data: user, error } = await supabase
+    .from('users')
+    .select('user_id, email, password_hash, role, company_id')
+    .eq('email', email)
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!user) {
+    return res.status(401).json({ error: 'Invalid credentials' });
+  }
+
+  const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+  if (!isPasswordValid) {
+    return res.status(401).json({ error: 'Invalid credentials' });
+  }
+
+  const token = jwt.sign(
+    {
+      userId: user.user_id,
+      role: user.role,
+    },
+    process.env.JWT_SECRET!,
+    { expiresIn: '24h' }
+  );
+
+  res.json({
+    token,
+    user: {
+      id: user.user_id,
+      email: user.email,
+      role: user.role,
+      companyId: user.company_id
+    }
+  });
+};
+
+export default { login };
+</file>
+
+<file path="backend/.env.example">
+PORT=3000
+FRONTEND_URL=
+SUPABASE_URL=
+SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+JWT_SECRET=
+</file>
+
+<file path="backend/tsconfig.json">
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "outDir": "dist",
+    "rootDir": "src",
+    "strict": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+  },
+  "include": [
+    "src"
+  ]
+}
+</file>
+
+<file path="backend/src/controllers/user.ts">
+import { Response } from 'express';
+import bcrypt from 'bcrypt';
+import { supabase } from '../db/supabase.js';
+import { AuthRequest } from '../middleware/auth.js';
+
+export const getAllUsers = async (_: AuthRequest, res: Response) => {
+  const { data, error } = await supabase
+    .from('users')
+    .select('user_id, email, role, company_id, first_name, last_name');
+
+  if (error) throw error;
+
+  res.json(data);
+};
+
+export const createUser = async (req: AuthRequest, res: Response) => {
+  const { email, password, role, company_id, messenger_psid, first_name, last_name } = req.body;
+
+  if ((!email || !password || !role) && !messenger_psid) {
+    return res.status(400).json({ error: 'Required user information is missing.' });
+  }
+
+  let password_hash = null;
+  if (password) {
+    const salt = await bcrypt.genSalt(10);
+    password_hash = await bcrypt.hash(password, salt);
+  }
+
+  const { data, error } = await supabase
+    .from('users')
+    .insert({
+      email,
+      password_hash,
+      role,
+      company_id,
+      messenger_psid,
+      first_name,
+      last_name,
+    })
+    .select('user_id, email, role, created_at')
+    .single();
+
+  if (error) {
+    if (error.code === '23505') {
+      return res.status(409).json({ error: 'User with this email or messenger ID already exists.' });
+    }
+    throw error;
+  }
+
+  res.status(201).json(data);
+};
+
+export const getCurrentUser = async (req: AuthRequest, res: Response) => {
+  res.json({ user: req.user });
+};
+
+export const updateCurrentUser = async (req: AuthRequest, res: Response) => {
+  const { id } = req.user!; // assert non-null because of auth middleware
+  const { first_name, last_name, university, skills, interests } = req.body;
+
+  const { data, error } = await supabase
+    .from('users')
+    .update({ first_name, last_name, university, skills, interests, updated_at: new Date() })
+    .eq('user_id', id)
+    .select('user_id, email, role, company_id, first_name, last_name, university, skills, interests')
+    .single();
+
+  if (error) throw error;
+
+  res.json(data);
+};
+
+export const getUserById = async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+
+  const { data: user, error } = await supabase
+    .from('users')
+    .select('user_id, email, role, company_id, first_name, last_name, university, skills, interests')
+    .eq('user_id', id)
+    .single();
+
+  if (error) throw error;
+
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  res.json(user);
+};
+
+export const updateUserById = async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const { first_name, last_name, university, skills, interests } = req.body;
+
+  const { data: user, error } = await supabase
+    .from('users')
+    .update({ first_name, last_name, university, skills, interests, updated_at: new Date() })
+    .eq('user_id', id)
+    .select('user_id, email, role, company_id, first_name, last_name, university, skills, interests')
+    .single();
+
+  if (error) throw error;
+
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  res.json(user);
+};
+
+export default {
+  getAllUsers,
+  createUser,
+  getCurrentUser,
+  updateCurrentUser,
+  getUserById,
+  updateUserById,
+};
+</file>
+
+<file path="backend/src/db/init.sql">
+-- drop existing tables if they exist to start fresh
+DROP TABLE IF EXISTS recruiter_actions;
+DROP TABLE IF EXISTS applications;
+DROP TABLE IF EXISTS jobs;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS companies;
+
+
+-- table: companies
+-- description: stores information about the companies posting jobs.
+CREATE TABLE companies (
+    company_id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    website VARCHAR(255),
+    description TEXT,
+    logo_url VARCHAR(255), -- URL to company logo in cloud storage
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- table: users
+-- description: stores information for all user types: job seekers, recruiters, and superadmins.
+CREATE TABLE users (
+    user_id BIGSERIAL PRIMARY KEY,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL, -- hashed password for dashboard login
+
+    -- profile Information (primarily for job seekers)
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
+    university VARCHAR(255),
+    skills TEXT[], -- Using a native PostgreSQL array for efficient querying
+    interests TEXT[],
+
+    -- system & role Information
+    role VARCHAR(50) NOT NULL CHECK (role IN ('seeker', 'admin', 'superadmin')),
+    messenger_psid VARCHAR(255) UNIQUE, -- page-scoped id from messenger
+    resume_url VARCHAR(255), -- url to resume file in cloud storage
+
+    -- association for admins
+    company_id BIGINT REFERENCES companies(company_id) ON DELETE SET NULL, -- recruiter belongs to a company
+
+    -- timestamps
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- table: jobs
+-- description: stores job postings created by recruiters.
+CREATE TABLE jobs (
+    job_id BIGSERIAL PRIMARY KEY,
+    company_id BIGINT NOT NULL REFERENCES companies(company_id) ON DELETE RESTRICT,
+    created_by_user_id BIGINT NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT, -- The recruiter who posted the job
+
+    title VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    location VARCHAR(255),
+    employment_type VARCHAR(100) CHECK (employment_type IN ('full-time', 'part-time', 'contract', 'internship')),
+
+    is_active BOOLEAN NOT NULL DEFAULT TRUE, -- to deactivate jobs without deleting them
+
+    -- timestamps
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- table: applications
+-- description: a join table representing a job seeker's application to a specific job.
+-- it also tracks the current status of that application.
+CREATE TABLE applications (
+    application_id BIGSERIAL PRIMARY KEY,
+    job_id BIGINT NOT NULL REFERENCES jobs(job_id) ON DELETE RESTRICT,
+    user_id BIGINT NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT,
+
+    status VARCHAR(50) NOT NULL DEFAULT 'applied' CHECK (status IN ('applied', 'shortlisted', 'rejected')),
+
+    -- timestamps
+    applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), -- specific name for when the application was submitted
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    -- a user can only apply to the same job once.
+    UNIQUE (job_id, user_id)
+);
+
+-- table: recruiter_actions
+-- description: an audit log of actions performed by recruiters on applications.
+-- provides a history of who did what and when, separate from the application's current state.
+CREATE TABLE recruiter_actions (
+    action_id BIGSERIAL PRIMARY KEY,
+    application_id BIGINT NOT NULL REFERENCES applications(application_id) ON DELETE CASCADE,
+    recruiter_user_id BIGINT NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT,
+
+    action_type VARCHAR(50) NOT NULL CHECK (action_type IN ('shortlist', 'reject')),
+
+    -- timestamps
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+
+-- indexes for performance
+-- description: creating indexes on foreign keys and frequently queried columns
+-- to speed up database lookups.
+
+-- users table indexes
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_role ON users(role);
+CREATE INDEX idx_users_company_id ON users(company_id);
+CREATE INDEX idx_users_messenger_psid ON users(messenger_psid);
+
+-- jobs table indexes
+CREATE INDEX idx_jobs_company_id ON jobs(company_id);
+CREATE INDEX idx_jobs_is_active ON jobs(is_active);
+CREATE INDEX idx_jobs_created_by ON jobs(created_by_user_id);
+
+-- applications table indexes
+CREATE INDEX idx_applications_job_id ON applications(job_id);
+CREATE INDEX idx_applications_user_id ON applications(user_id);
+CREATE INDEX idx_applications_status ON applications(status);
+
+-- recruiter Actions table indexes
+CREATE INDEX idx_recruiter_actions_application_id ON recruiter_actions(application_id);
+CREATE INDEX idx_recruiter_actions_recruiter_id ON recruiter_actions(recruiter_user_id);
+</file>
+
+<file path="backend/src/routes/auth.ts">
+import express from 'express';
+import authController from '../controllers/auth.js';
+import { validate } from '../middleware/validation.js';
+import loginValidator from '../validation/auth.js';
+
+const router = express.Router();
+
+// POST /auth/login - user login
+router.post('/login', validate(loginValidator.loginSchema), authController.login);
+
+export default router;
+</file>
+
+<file path="backend/src/routes/index.ts">
+import express from 'express';
+
+import authRoutes from './auth.js';
+import userRoutes from './user.js';
+
+const router = express.Router();
+
+router.use('/auth', authRoutes);
+router.use('/users', userRoutes);
+
+export default router;
+</file>
+
+<file path="backend/src/routes/user.ts">
+import express from 'express';
+import userController from '../controllers/user.js';
+import { validate } from '../middleware/validation.js';
+import userValidator from '../validation/user.js';
+import { authenticateToken } from '../middleware/auth.js';
+
+const router = express.Router();
+
+// GET /users - get all users
+router.get('/', authenticateToken, userController.getAllUsers);
+// POST /users - create a new user
+router.post('/', validate(userValidator.createUserSchema), userController.createUser);
+
+// GET /users/me - get current user
+router.get('/me', authenticateToken, userController.getCurrentUser);
+// PUT /users/me - update current user
+router.put('/me', authenticateToken, validate(userValidator.updateCurrentUserSchema), userController.updateCurrentUser);
+
+// GET /users/:id - get user by ID
+router.get('/:id', authenticateToken, validate(userValidator.getUserByIdSchema), userController.getUserById);
+// PUT /users/:id - update user by ID
+router.put('/:id', authenticateToken, validate(userValidator.updateUserByIdSchema), userController.updateUserById);
+
+export default router;
+</file>
+
+<file path="backend/src/app.ts">
+import express, { Request, Response } from "express";
+import helmet from "helmet";
+import morgan from "morgan";
+import cors from "cors";
+import "dotenv/config";
+
+const app = express();
+const port = process.env.PORT || 3000;
+
+// middleware
+
+// security headers
+app.use(helmet());
+
+// logger ('combined' - apache style)
+app.use(morgan("combined"));
+
+// cors config
+const corsOptions = {
+  origin: process.env.FRONTEND_URL || "http://localhost:5173",
+  optionsSuccessStatus: 200,
+}
+app.use(cors(corsOptions));
+
+// parse JSON
+app.use(express.json());
+
+// parse URL-encoded data
+app.use(express.urlencoded({ extended: true }));
+
+import index from "./routes/index.js";
+
+// routes
+app.use("/api", index);
+
+// health check
+app.get("/", (_: Request, res: Response) => {
+  res.send("Talento App is Running!");
+});
+
+// global error handler
+app.use((err: any, _: Request, res: Response, next: any) => {
+  console.error(err.stack);
+  res.status(500).send("Internal Server Error");
+  next();
+});
+
+app.listen(port, () => {
+  console.log(`Server listening at port ${port}`);
+});
+</file>
+
+<file path="backend/package.json">
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "dev": "nodemon --exec tsx src/app.ts",
+    "start": "node dist/index.js",
+    "build": "tsc"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.58.0",
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.1",
+    "zod": "^4.1.11"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/jest": "^30.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/morgan": "^1.9.10",
+    "@types/node": "^24.6.1",
+    "@types/supertest": "^6.0.3",
+    "dotenv": "^17.2.3",
+    "jest": "^30.2.0",
+    "nodemon": "^3.1.10",
+    "supertest": "^7.1.4",
+    "ts-jest": "^29.4.4",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}
+</file>
+
+</files>

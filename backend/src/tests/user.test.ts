@@ -41,7 +41,7 @@ describe('User Routes', () => {
   describe('PUT /users/me', () => {
     it('should update the current user and return the updated data', async () => {
       const updateData = { first_name: 'Johnathan' };
-      const updatedUser = { user_id: 1, email: 'john.doe@example.com', first_name: 'Johnathan' };
+      const updatedUser = { id: 1, email: 'john.doe@example.com', first_name: 'Johnathan' };
 
       // Mock the Supabase update call
       (supabase.from('users').update(updateData).eq('id', '1').select().single as jest.Mock)
@@ -67,7 +67,7 @@ describe('User Routes', () => {
 
   describe('GET /users/:id', () => {
     it('should get a user by their ID', async () => {
-      const mockUser = { user_id: 2, email: 'jane.smith@example.com' };
+      const mockUser = { id: 2, email: 'jane.smith@example.com' };
 
       (supabase.from('users').select().eq('id', '2').single as jest.Mock)
         .mockResolvedValue({ data: mockUser, error: null });

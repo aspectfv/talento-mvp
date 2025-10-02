@@ -9,7 +9,7 @@ DROP TABLE IF EXISTS companies;
 -- table: companies
 -- description: stores information about the companies posting jobs.
 CREATE TABLE companies (
-    company_id BIGSERIAL PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     website VARCHAR(255),
     description TEXT,
@@ -21,7 +21,7 @@ CREATE TABLE companies (
 -- table: users
 -- description: stores information for all user types: job seekers, recruiters, and superadmins.
 CREATE TABLE users (
-    user_id BIGSERIAL PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL, -- hashed password for dashboard login
 
@@ -38,7 +38,7 @@ CREATE TABLE users (
     resume_url VARCHAR(255), -- url to resume file in cloud storage
 
     -- association for admins
-    company_id BIGINT REFERENCES companies(company_id) ON DELETE SET NULL, -- recruiter belongs to a company
+    company_id BIGINT REFERENCES companies(id) ON DELETE SET NULL, -- recruiter belongs to a company
 
     -- timestamps
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -48,9 +48,9 @@ CREATE TABLE users (
 -- table: jobs
 -- description: stores job postings created by recruiters.
 CREATE TABLE jobs (
-    job_id BIGSERIAL PRIMARY KEY,
-    company_id BIGINT NOT NULL REFERENCES companies(company_id) ON DELETE RESTRICT,
-    created_by_user_id BIGINT NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT, -- The recruiter who posted the job
+    id BIGSERIAL PRIMARY KEY,
+    company_id BIGINT NOT NULL REFERENCES companies(id) ON DELETE RESTRICT,
+    created_by_user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE RESTRICT, -- The recruiter who posted the job
 
     title VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
@@ -68,9 +68,9 @@ CREATE TABLE jobs (
 -- description: a join table representing a job seeker's application to a specific job.
 -- it also tracks the current status of that application.
 CREATE TABLE applications (
-    application_id BIGSERIAL PRIMARY KEY,
-    job_id BIGINT NOT NULL REFERENCES jobs(job_id) ON DELETE RESTRICT,
-    user_id BIGINT NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT,
+    id BIGSERIAL PRIMARY KEY,
+    job_id BIGINT NOT NULL REFERENCES jobs(id) ON DELETE RESTRICT,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
 
     status VARCHAR(50) NOT NULL DEFAULT 'applied' CHECK (status IN ('applied', 'shortlisted', 'rejected')),
 
@@ -86,9 +86,9 @@ CREATE TABLE applications (
 -- description: an audit log of actions performed by recruiters on applications.
 -- provides a history of who did what and when, separate from the application's current state.
 CREATE TABLE recruiter_actions (
-    action_id BIGSERIAL PRIMARY KEY,
-    application_id BIGINT NOT NULL REFERENCES applications(application_id) ON DELETE CASCADE,
-    recruiter_user_id BIGINT NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT,
+    id BIGSERIAL PRIMARY KEY,
+    application_id BIGINT NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
+    recruiter_user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
 
     action_type VARCHAR(50) NOT NULL CHECK (action_type IN ('shortlist', 'reject')),
 
