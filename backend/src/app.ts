@@ -29,6 +29,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 
+import index from "./routes/index.js";
+
+// routes
+app.use("/api", index);
+
 
 app.get("/", (_: Request, res: Response) => {
   res.send("Hello World!");
