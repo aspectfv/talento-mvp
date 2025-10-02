@@ -17,7 +17,7 @@ app.use(morgan("combined"));
 
 // cors config
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || "http://localhost:3000",
+  origin: process.env.FRONTEND_URL || "http://localhost:5173",
   optionsSuccessStatus: 200,
 }
 app.use(cors(corsOptions));
@@ -41,7 +41,7 @@ app.get("/", (_: Request, res: Response) => {
 // global error handler
 app.use((err: any, _: Request, res: Response, next: any) => {
   console.error(err.stack);
-  res.status(500).send("Something broke!");
+  res.status(500).send("Internal Server Error");
   next();
 });
 
