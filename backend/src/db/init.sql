@@ -29,7 +29,7 @@ CREATE TABLE users (
     first_name VARCHAR(100),
     last_name VARCHAR(100),
     university VARCHAR(255),
-    skills TEXT[], -- Using a native PostgreSQL array for efficient querying
+    skills TEXT[], -- native pgsql array for efficient querying
     interests TEXT[],
 
     -- system & role Information
