@@ -28,15 +28,21 @@ app.use(express.json());
 // parse URL-encoded data
 app.use(express.urlencoded({ extended: true }));
 
-
 import index from "./routes/index.js";
 
 // routes
 app.use("/api", index);
 
-
+// health check
 app.get("/", (_: Request, res: Response) => {
-  res.send("Hello World!");
+  res.send("Talento App is Running!");
+});
+
+// global error handler
+app.use((err: any, _: Request, res: Response, next: any) => {
+  console.error(err.stack);
+  res.status(500).send("Something broke!");
+  next();
 });
 
 app.listen(port, () => {
