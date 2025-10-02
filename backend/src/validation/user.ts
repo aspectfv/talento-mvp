@@ -51,3 +51,10 @@ export const updateUserByIdSchema = z.object({
     }),
   }),
 });
+
+export default {
+  createUserSchema,
+  updateCurrentUserSchema,
+  getUserByIdSchema,
+  updateUserByIdSchema,
+};

@@ -3,7 +3,7 @@ import bcrypt from 'bcrypt';
 import { supabase } from '../db/supabase.js';
 import { AuthRequest } from '../middleware/auth.js';
 
-export const getAllUsers = async (req: AuthRequest, res: Response) => {
+export const getAllUsers = async (_: AuthRequest, res: Response) => {
   const { data, error } = await supabase
     .from('users')
     .select('user_id, email, role, company_id, first_name, last_name');

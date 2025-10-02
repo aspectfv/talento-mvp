@@ -6,3 +6,7 @@ export const loginSchema = z.object({
     password: z.string().min(1, 'Password is required'),
   }),
 });
+
+export default {
+  loginSchema,
+};
