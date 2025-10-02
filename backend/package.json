@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "jest",
-    "dev": "nodemon --exec tsx src/app.ts",
+    "dev": "nodemon -r dotenv/config --exec tsx src/app.ts",
     "start": "node dist/index.js",
     "build": "tsc"
   },
