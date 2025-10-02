@@ -15,7 +15,7 @@ export const validate =
         if (error instanceof ZodError) {
           return res.status(400).json({
             error: 'Validation failed',
-            details: z.treeifyError(error),
+            details: z.prettifyError(error),
           });
         }
         return next(error);
